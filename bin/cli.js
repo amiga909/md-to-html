@@ -19,6 +19,7 @@ Options:
       --flat            Write all .html files directly into output (no subfolders)
       --no-assets       Do not copy referenced files (e.g. images) to output
       --no-clean        Do not empty the output directory before converting
+      --no-lightbox     Do not open image links in a fullscreen overlay
       --inline-images   Embed local images as base64 data URIs in the HTML
       --inline-images-max <mb>
                         Max MB of image bytes to inline per HTML file (default: 10)
@@ -67,6 +68,9 @@ function parseArgs(argv) {
         break;
       case "--no-clean":
         args.clean = false;
+        break;
+      case "--no-lightbox":
+        args.lightbox = false;
         break;
       case "--inline-images":
         args.inlineImages = true;

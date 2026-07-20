@@ -33,6 +33,7 @@ md-to-html --input ./docs --output ../script --header "My Project" --footer "© 
 | `--flat` | Write all `.html` files directly into the output directory instead of mirroring the input folder structure (name collisions get a path-derived name; combine with `--inline-images` so image links keep working) |
 | `--no-assets` | Don't copy referenced files (e.g. images) to the output directory |
 | `--no-clean` | Don't empty the output directory before converting |
+| `--no-lightbox` | Don't open image links (click-to-enlarge) in a fullscreen overlay |
 | `--inline-images` | Embed local images as base64 `data:` URIs directly in the HTML |
 | `--inline-images-max <mb>` | Max MB of image file bytes to inline per HTML file (default: 10); images over budget keep their file reference |
 | `-c, --config <file>` | Config file (default: `./md-to-html.config.json` if present) |
@@ -90,6 +91,7 @@ With `--inline-images` (or `"inlineImages": true` in the config), local images r
 - **Cleans the output directory before every run** (disable with `--no-clean`); it refuses to clean a directory that contains the input directory, or a home/root directory.
 - Copies **only the files actually referenced** by the generated HTML (images, linked PDFs, …) — unreferenced images, markdown sources, and junk (`node_modules`, `.git`, `.DS_Store`, …) never end up in the output. Images already embedded via `--inline-images` aren't copied either.
 - Injects the configured header/footer into each page; the header also shows the source file's folder path as a breadcrumb (e.g. "Day 1 - Exercises").
+- Images wrapped in a link (click-to-enlarge) open in a fullscreen lightbox overlay instead of navigating to the image file — this keeps working with `--inline-images`, where the image file doesn't exist anymore (close with click or Escape; disable with `--no-lightbox`).
 - Adds `target="_blank" rel="noopener noreferrer"` to external links.
 - Adds a subtle bottom border to `h2` headings (GitHub style).
 - Copies all non-markdown files and folders (images, PDFs, …) from input to output, unless `--no-assets` is set.

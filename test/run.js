@@ -33,7 +33,7 @@ async function main() {
   await fs.writeFile(path.join(input, "notes.txt"), "not referenced anywhere");
   await fs.writeFile(
     path.join(input, "page.md"),
-    "# Title\n\n## Section\n\n[ext](https://example.com)\n\n![dot](images/dot.png)\n",
+    "# Title\n\n## Section\n\n[ext](https://example.com)\n\n[![dot](images/dot.png)](images/dot.png)\n",
   );
   await fs.writeFile(
     path.join(input, "Day 1", "Exercises", "task.md"),
@@ -103,6 +103,24 @@ async function main() {
   const flatHtml = await fs.readFile(path.join(flatOut, "task.html"), "utf8");
   assert.ok(flatHtml.includes('src="data:image/png;base64,'), "flat: image inlined as data URI");
   assert.ok(!(await exists(path.join(flatOut, "images"))), "flat+inline: no image files copied");
+
+  const flatPageHtml = await fs.readFile(path.join(flatOut, "page.html"), "utf8");
+  assert.ok(
+    flatPageHtml.includes("md-lightbox-overlay"),
+    "lightbox injected for click-to-enlarge image links",
+  );
+  const noLightbox = await convert({
+    input,
+    output: flatOut,
+    flat: true,
+    lightbox: false,
+    quiet: true,
+  });
+  assert.strictEqual(noLightbox.failed.length, 0, "no-lightbox: no conversions should fail");
+  assert.ok(
+    !(await fs.readFile(path.join(flatOut, "page.html"), "utf8")).includes("md-lightbox-overlay"),
+    "lightbox can be disabled",
+  );
 
   await fs.rm(tmp, { recursive: true, force: true });
   console.log("✓ all tests passed");
