@@ -31,7 +31,8 @@ md-to-html --input ./docs --output ../script --header "My Project" --footer "© 
 | `--header <text>` | Header text/HTML rendered at the top of every page |
 | `--footer <text>` | Footer text/HTML rendered at the bottom of every page |
 | `--flat` | Write all `.html` files directly into the output directory instead of mirroring the input folder structure (name collisions get a path-derived name; combine with `--inline-images` so image links keep working) |
-| `--no-assets` | Don't copy non-markdown files (e.g. `images/`) to the output directory |
+| `--no-assets` | Don't copy referenced files (e.g. images) to the output directory |
+| `--no-clean` | Don't empty the output directory before converting |
 | `--inline-images` | Embed local images as base64 `data:` URIs directly in the HTML |
 | `--inline-images-max <mb>` | Max MB of image file bytes to inline per HTML file (default: 10); images over budget keep their file reference |
 | `-c, --config <file>` | Config file (default: `./md-to-html.config.json` if present) |
@@ -86,7 +87,8 @@ With `--inline-images` (or `"inlineImages": true` in the config), local images r
 ## What it does
 
 - Converts every `*.md` file in the input directory **recursively** to a self-contained `*.html` file (offline export, no CDN dependencies), mirroring the folder structure in the output directory (or flattening it with `--flat`).
-- Skips hidden files/folders, `node_modules`, `package.json`/`package-lock.json`, and the output directory itself when it lies inside the input directory.
+- **Cleans the output directory before every run** (disable with `--no-clean`); it refuses to clean a directory that contains the input directory, or a home/root directory.
+- Copies **only the files actually referenced** by the generated HTML (images, linked PDFs, …) — unreferenced images, markdown sources, and junk (`node_modules`, `.git`, `.DS_Store`, …) never end up in the output. Images already embedded via `--inline-images` aren't copied either.
 - Injects the configured header/footer into each page; the header also shows the source file's folder path as a breadcrumb (e.g. "Day 1 - Exercises").
 - Adds `target="_blank" rel="noopener noreferrer"` to external links.
 - Adds a subtle bottom border to `h2` headings (GitHub style).

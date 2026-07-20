@@ -10,6 +10,15 @@ const PNG = Buffer.from(
   "base64",
 );
 
+async function exists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "md-to-html-test-"));
   const input = path.join(tmp, "docs");
@@ -19,7 +28,9 @@ async function main() {
   await fs.mkdir(path.join(input, "Day 1", "Exercises"), { recursive: true });
   await fs.mkdir(path.join(input, "Day 1", ".img"), { recursive: true });
   await fs.writeFile(path.join(input, "images", "dot.png"), PNG);
+  await fs.writeFile(path.join(input, "images", "unused.png"), PNG);
   await fs.writeFile(path.join(input, "Day 1", ".img", "dot.png"), PNG);
+  await fs.writeFile(path.join(input, "notes.txt"), "not referenced anywhere");
   await fs.writeFile(
     path.join(input, "page.md"),
     "# Title\n\n## Section\n\n[ext](https://example.com)\n\n![dot](images/dot.png)\n",
@@ -29,12 +40,12 @@ async function main() {
     "# Task\n\n![dot](../.img/dot.png)\n",
   );
 
+  // --- Mirrored mode, no inlining: referenced assets copied, junk excluded ---
   const { converted, failed } = await convert({
     input,
     output,
     header: "Test Header",
     footer: "Test Footer",
-    inlineImages: true,
     quiet: true,
   });
 
@@ -48,11 +59,6 @@ async function main() {
     /<a href="https:\/\/example\.com" target="_blank" rel="noopener noreferrer"/.test(html),
     "external links open in new tab",
   );
-  assert.ok(html.includes('src="data:image/png;base64,'), "image inlined as data URI");
-  assert.ok(
-    (await fs.stat(path.join(output, "images", "dot.png"))).isFile(),
-    "assets copied to output",
-  );
 
   const nestedHtml = await fs.readFile(
     path.join(output, "Day 1", "Exercises", "task.html"),
@@ -62,20 +68,41 @@ async function main() {
     nestedHtml.includes('class="md-page-breadcrumb">Day 1 - Exercises<'),
     "breadcrumb shows source folder path",
   );
-  assert.ok(nestedHtml.includes('src="data:image/png;base64,'), "nested ../.img image inlined");
+
+  assert.ok(await exists(path.join(output, "images", "dot.png")), "referenced asset copied");
   assert.ok(
-    (await fs.stat(path.join(output, "Day 1", ".img", "dot.png"))).isFile(),
-    "hidden .img asset folder copied",
+    await exists(path.join(output, "Day 1", ".img", "dot.png")),
+    "referenced hidden .img asset copied",
+  );
+  assert.ok(!(await exists(path.join(output, "images", "unused.png"))), "unused image not copied");
+  assert.ok(!(await exists(path.join(output, "notes.txt"))), "unreferenced file not copied");
+  assert.ok(!(await exists(path.join(output, "page.md"))), "no md files in output");
+
+  // --- Clean: stale files are removed on the next run ---
+  await fs.writeFile(path.join(output, "stale.html"), "old");
+  await convert({ input, output, quiet: true });
+  assert.ok(!(await exists(path.join(output, "stale.html"))), "stale file removed by clean");
+
+  // --- Clean guard: output containing input must be refused ---
+  await assert.rejects(
+    convert({ input, output: tmp, quiet: true }),
+    /Refusing to clean/,
+    "cleaning a directory that contains the input is refused",
   );
 
-  // Flat mode: no subfolders, output inside input must not recurse into itself.
+  // --- Flat + inline: single folder, images embedded, none copied ---
   const flatOut = path.join(input, "html");
-  const flatResult = await convert({ input, output: flatOut, flat: true, quiet: true });
+  const flatResult = await convert({
+    input,
+    output: flatOut,
+    flat: true,
+    inlineImages: true,
+    quiet: true,
+  });
   assert.strictEqual(flatResult.failed.length, 0, "flat: no conversions should fail");
-  assert.ok(
-    (await fs.stat(path.join(flatOut, "task.html"))).isFile(),
-    "flat: nested file lands in output root",
-  );
+  const flatHtml = await fs.readFile(path.join(flatOut, "task.html"), "utf8");
+  assert.ok(flatHtml.includes('src="data:image/png;base64,'), "flat: image inlined as data URI");
+  assert.ok(!(await exists(path.join(flatOut, "images"))), "flat+inline: no image files copied");
 
   await fs.rm(tmp, { recursive: true, force: true });
   console.log("✓ all tests passed");

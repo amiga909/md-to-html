@@ -17,7 +17,8 @@ Options:
       --header <text>   Header text/HTML shown at the top of every page
       --footer <text>   Footer text/HTML shown at the bottom of every page
       --flat            Write all .html files directly into output (no subfolders)
-      --no-assets       Do not copy non-markdown files (e.g. images) to output
+      --no-assets       Do not copy referenced files (e.g. images) to output
+      --no-clean        Do not empty the output directory before converting
       --inline-images   Embed local images as base64 data URIs in the HTML
       --inline-images-max <mb>
                         Max MB of image bytes to inline per HTML file (default: 10)
@@ -63,6 +64,9 @@ function parseArgs(argv) {
         break;
       case "--no-assets":
         args.assets = false;
+        break;
+      case "--no-clean":
+        args.clean = false;
         break;
       case "--inline-images":
         args.inlineImages = true;
