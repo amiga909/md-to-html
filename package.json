@@ -1,0 +1,32 @@
+{
+  "name": "@romanhatz/md-to-html",
+  "version": "1.0.0",
+  "description": "Convert a folder of Markdown files to standalone HTML files (via mume), with per-project header/footer.",
+  "main": "index.js",
+  "bin": {
+    "md-to-html": "bin/cli.js"
+  },
+  "files": [
+    "index.js",
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/run.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "markdown",
+    "html",
+    "converter",
+    "mume"
+  ],
+  "author": "Roman Hatz",
+  "license": "ISC",
+  "dependencies": {
+    "@shd101wyy/mume": "^0.7.9"
+  }
+}

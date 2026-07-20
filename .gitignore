@@ -1,0 +1,4 @@
+.claude
+test-data/
+node_modules/
+*.tgz
