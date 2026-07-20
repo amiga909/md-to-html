@@ -16,13 +16,9 @@ Options:
   -o, --output <dir>    Directory to write .html files to (required)
       --header <text>   Header text/HTML shown at the top of every page
       --footer <text>   Footer text/HTML shown at the bottom of every page
-      --flat            Write all .html files directly into output (no subfolders)
-      --no-assets       Do not copy referenced files (e.g. images) to output
+      --no-assets       Do not copy referenced files (e.g. linked PDFs) to output
       --no-clean        Do not empty the output directory before converting
       --no-lightbox     Do not open image links in a fullscreen overlay
-      --inline-images   Embed local images as base64 data URIs in the HTML
-      --inline-images-max <mb>
-                        Max MB of image bytes to inline per HTML file (default: 10)
   -c, --config <file>   Config file (default: ./${DEFAULT_CONFIG_FILE} if present)
   -q, --quiet           Only print errors
   -h, --help            Show this help
@@ -60,9 +56,6 @@ function parseArgs(argv) {
       case "--footer":
         args.footer = next();
         break;
-      case "--flat":
-        args.flat = true;
-        break;
       case "--no-assets":
         args.assets = false;
         break;
@@ -72,17 +65,6 @@ function parseArgs(argv) {
       case "--no-lightbox":
         args.lightbox = false;
         break;
-      case "--inline-images":
-        args.inlineImages = true;
-        break;
-      case "--inline-images-max": {
-        const value = Number(next());
-        if (!Number.isFinite(value) || value <= 0) {
-          throw new Error("--inline-images-max must be a positive number (MB)");
-        }
-        args.inlineImagesMaxMB = value;
-        break;
-      }
       case "-c":
       case "--config":
         args.config = next();
