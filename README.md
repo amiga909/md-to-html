@@ -87,7 +87,7 @@ With `--inline-images` (or `"inlineImages": true` in the config), local images r
 
 - Converts every `*.md` file in the input directory **recursively** to a self-contained `*.html` file (offline export, no CDN dependencies), mirroring the folder structure in the output directory (or flattening it with `--flat`).
 - Skips hidden files/folders, `node_modules`, `package.json`/`package-lock.json`, and the output directory itself when it lies inside the input directory.
-- Injects the configured header/footer into each page.
+- Injects the configured header/footer into each page; the header also shows the source file's folder path as a breadcrumb (e.g. "Day 1 - Exercises").
 - Adds `target="_blank" rel="noopener noreferrer"` to external links.
 - Adds a subtle bottom border to `h2` headings (GitHub style).
 - Copies all non-markdown files and folders (images, PDFs, …) from input to output, unless `--no-assets` is set.
