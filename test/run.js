@@ -31,16 +31,17 @@ async function main() {
   await fs.writeFile(path.join(input, "images", "unused.png"), PNG);
   await fs.writeFile(path.join(input, "Day 1", ".img", "dot.png"), PNG);
   await fs.writeFile(path.join(input, "notes.txt"), "not referenced anywhere");
+  await fs.writeFile(path.join(input, "handout.pdf"), "%PDF-1.4 fake");
   await fs.writeFile(
     path.join(input, "page.md"),
-    "# Title\n\n## Section\n\n[ext](https://example.com)\n\n[![dot](images/dot.png)](images/dot.png)\n",
+    "# Title\n\n## Section\n\n[ext](https://example.com)\n\n" +
+      "[![dot](images/dot.png)](images/dot.png)\n\n[Handout](handout.pdf)\n",
   );
   await fs.writeFile(
     path.join(input, "Day 1", "Exercises", "task.md"),
     "# Task\n\n![dot](../.img/dot.png)\n",
   );
 
-  // --- Mirrored mode, no inlining: referenced assets copied, junk excluded ---
   const { converted, failed } = await convert({
     input,
     output,
@@ -53,12 +54,14 @@ async function main() {
   assert.strictEqual(converted.length, 2, "two files should be converted");
 
   const html = await fs.readFile(path.join(output, "page.html"), "utf8");
-  assert.ok(html.includes('class="md-page-header">Test Header<'), "header injected");
+  assert.ok(html.includes('class="md-page-title">Test Header<'), "header injected");
   assert.ok(html.includes('class="md-page-footer">Test Footer<'), "footer injected");
   assert.ok(
     /<a href="https:\/\/example\.com" target="_blank" rel="noopener noreferrer"/.test(html),
     "external links open in new tab",
   );
+  assert.ok(html.includes('src="data:image/png;base64,'), "images always inlined");
+  assert.ok(html.includes("md-lightbox-overlay"), "lightbox injected");
 
   const nestedHtml = await fs.readFile(
     path.join(output, "Day 1", "Exercises", "task.html"),
@@ -68,13 +71,18 @@ async function main() {
     nestedHtml.includes('class="md-page-breadcrumb">Day 1 - Exercises<'),
     "breadcrumb shows source folder path",
   );
-
-  assert.ok(await exists(path.join(output, "images", "dot.png")), "referenced asset copied");
   assert.ok(
-    await exists(path.join(output, "Day 1", ".img", "dot.png")),
-    "referenced hidden .img asset copied",
+    nestedHtml.includes('src="data:image/png;base64,'),
+    "nested ../.img image inlined",
+  );
+
+  assert.ok(await exists(path.join(output, "handout.pdf")), "referenced non-image file copied");
+  assert.ok(
+    !(await exists(path.join(output, "images", "dot.png"))),
+    "image link target not copied (inlined + lightbox)",
   );
   assert.ok(!(await exists(path.join(output, "images", "unused.png"))), "unused image not copied");
+  assert.ok(!(await exists(path.join(output, "Day 1", ".img"))), "inlined .img folder not copied");
   assert.ok(!(await exists(path.join(output, "notes.txt"))), "unreferenced file not copied");
   assert.ok(!(await exists(path.join(output, "page.md"))), "no md files in output");
 
@@ -90,36 +98,23 @@ async function main() {
     "cleaning a directory that contains the input is refused",
   );
 
-  // --- Flat + inline: single folder, images embedded, none copied ---
-  const flatOut = path.join(input, "html");
-  const flatResult = await convert({
-    input,
-    output: flatOut,
-    flat: true,
-    inlineImages: true,
-    quiet: true,
-  });
-  assert.strictEqual(flatResult.failed.length, 0, "flat: no conversions should fail");
-  const flatHtml = await fs.readFile(path.join(flatOut, "task.html"), "utf8");
-  assert.ok(flatHtml.includes('src="data:image/png;base64,'), "flat: image inlined as data URI");
-  assert.ok(!(await exists(path.join(flatOut, "images"))), "flat+inline: no image files copied");
-
-  const flatPageHtml = await fs.readFile(path.join(flatOut, "page.html"), "utf8");
+  // --- Output inside input: allowed, does not recurse into itself ---
+  const innerOut = path.join(input, "html");
+  const innerResult = await convert({ input, output: innerOut, quiet: true });
+  assert.strictEqual(innerResult.failed.length, 0, "inner output: no conversions should fail");
   assert.ok(
-    flatPageHtml.includes("md-lightbox-overlay"),
-    "lightbox injected for click-to-enlarge image links",
+    await exists(path.join(innerOut, "Day 1", "Exercises", "task.html")),
+    "inner output: structure mirrored",
   );
-  const noLightbox = await convert({
-    input,
-    output: flatOut,
-    flat: true,
-    lightbox: false,
-    quiet: true,
-  });
+
+  // --- Lightbox can be disabled; image link targets are then copied ---
+  const noLightbox = await convert({ input, output, lightbox: false, quiet: true });
   assert.strictEqual(noLightbox.failed.length, 0, "no-lightbox: no conversions should fail");
+  const plainHtml = await fs.readFile(path.join(output, "page.html"), "utf8");
+  assert.ok(!plainHtml.includes("md-lightbox-overlay"), "lightbox can be disabled");
   assert.ok(
-    !(await fs.readFile(path.join(flatOut, "page.html"), "utf8")).includes("md-lightbox-overlay"),
-    "lightbox can be disabled",
+    await exists(path.join(output, "images", "dot.png")),
+    "no-lightbox: image link target copied so links keep working",
   );
 
   await fs.rm(tmp, { recursive: true, force: true });
