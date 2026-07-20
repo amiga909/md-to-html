@@ -1,4 +1,5 @@
 .claude
+test-data2/
 test-data/
 node_modules/
 *.tgz

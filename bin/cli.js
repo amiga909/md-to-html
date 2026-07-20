@@ -16,6 +16,7 @@ Options:
   -o, --output <dir>    Directory to write .html files to (required)
       --header <text>   Header text/HTML shown at the top of every page
       --footer <text>   Footer text/HTML shown at the bottom of every page
+      --flat            Write all .html files directly into output (no subfolders)
       --no-assets       Do not copy non-markdown files (e.g. images) to output
       --inline-images   Embed local images as base64 data URIs in the HTML
       --inline-images-max <mb>
@@ -56,6 +57,9 @@ function parseArgs(argv) {
         break;
       case "--footer":
         args.footer = next();
+        break;
+      case "--flat":
+        args.flat = true;
         break;
       case "--no-assets":
         args.assets = false;
