@@ -125,17 +125,36 @@ async function main() {
     "no-lightbox: image link target copied so links keep working",
   );
 
-  // --- Stylesheet inlining: file:// links (e.g. mume's KaTeX css) get embedded ---
-  const cssFile = path.join(tmp, "katex.min.css");
+  // --- Stylesheet inlining: only mume's own node_modules css links are touched ---
+  const cssDir = path.join(tmp, "node_modules", "@shd101wyy", "mume", "katex");
+  await fs.mkdir(cssDir, { recursive: true });
+  const cssFile = path.join(cssDir, "katex.min.css");
   await fs.writeFile(cssFile, ".katex { color: red; }");
   const htmlWithFileLink = `<html><head><link rel="stylesheet" href="file:///${cssFile.replace(/^\//, "")}"></head><body></body></html>`;
   const inlined = await inlineLocalStylesheets(htmlWithFileLink, () => {});
-  assert.ok(!inlined.includes("file://"), "file:// stylesheet link removed");
+  assert.ok(!inlined.includes("file://"), "node_modules file:// stylesheet link removed");
   assert.ok(inlined.includes(".katex { color: red; }"), "stylesheet content inlined");
 
-  const htmlWithMissingFile = `<html><head><link rel="stylesheet" href="file:////nonexistent/path.css"></head><body></body></html>`;
+  const htmlWithMissingFile = `<html><head><link rel="stylesheet" href="file:////nonexistent/node_modules/path.css"></head><body></body></html>`;
   const cleaned = await inlineLocalStylesheets(htmlWithMissingFile, () => {});
-  assert.ok(!cleaned.includes("file://"), "broken file:// stylesheet link removed rather than left dangling");
+  assert.ok(!cleaned.includes("file://"), "broken node_modules file:// stylesheet link removed rather than left dangling");
+
+  // --- Safety: a file:// link outside node_modules, or in the body, must never be read ---
+  const secretFile = path.join(tmp, "secret.txt");
+  await fs.writeFile(secretFile, "TOP SECRET CONTENTS");
+  const htmlWithOutsideLink = `<html><head><link rel="stylesheet" href="file://${secretFile}"></head><body></body></html>`;
+  const untouchedHead = await inlineLocalStylesheets(htmlWithOutsideLink, () => {});
+  assert.ok(
+    untouchedHead.includes("file://") && !untouchedHead.includes("TOP SECRET"),
+    "non-node_modules file:// link in <head> is left untouched, never read",
+  );
+
+  const htmlWithBodyLink = `<html><head></head><body><p>Example: &lt;link rel="stylesheet" href="file://${secretFile}"&gt;</p><link rel="stylesheet" href="file://${secretFile}"></body></html>`;
+  const untouchedBody = await inlineLocalStylesheets(htmlWithBodyLink, () => {});
+  assert.ok(
+    !untouchedBody.includes("TOP SECRET"),
+    "a file:// link appearing in the body (e.g. markdown teaching example) is never read",
+  );
 
   await fs.rm(tmp, { recursive: true, force: true });
   console.log("✓ all tests passed");
