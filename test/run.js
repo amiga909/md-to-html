@@ -2,7 +2,7 @@ const assert = require("assert");
 const fs = require("fs").promises;
 const os = require("os");
 const path = require("path");
-const { convert } = require("../lib/convert");
+const { convert, inlineLocalStylesheets } = require("../lib/convert");
 
 // 1x1 red pixel PNG
 const PNG = Buffer.from(
@@ -75,6 +75,14 @@ async function main() {
     nestedHtml.includes('src="data:image/png;base64,'),
     "nested ../.img image inlined",
   );
+  assert.ok(
+    nestedHtml.includes("img { cursor: zoom-in; }"),
+    "bare (non-linked) images are also click-to-enlarge",
+  );
+  assert.ok(
+    nestedHtml.includes('img.closest("a")'),
+    "lightbox click handler looks up from the img, not from an anchor wrapper",
+  );
 
   assert.ok(await exists(path.join(output, "handout.pdf")), "referenced non-image file copied");
   assert.ok(
@@ -116,6 +124,18 @@ async function main() {
     await exists(path.join(output, "images", "dot.png")),
     "no-lightbox: image link target copied so links keep working",
   );
+
+  // --- Stylesheet inlining: file:// links (e.g. mume's KaTeX css) get embedded ---
+  const cssFile = path.join(tmp, "katex.min.css");
+  await fs.writeFile(cssFile, ".katex { color: red; }");
+  const htmlWithFileLink = `<html><head><link rel="stylesheet" href="file:///${cssFile.replace(/^\//, "")}"></head><body></body></html>`;
+  const inlined = await inlineLocalStylesheets(htmlWithFileLink, () => {});
+  assert.ok(!inlined.includes("file://"), "file:// stylesheet link removed");
+  assert.ok(inlined.includes(".katex { color: red; }"), "stylesheet content inlined");
+
+  const htmlWithMissingFile = `<html><head><link rel="stylesheet" href="file:////nonexistent/path.css"></head><body></body></html>`;
+  const cleaned = await inlineLocalStylesheets(htmlWithMissingFile, () => {});
+  assert.ok(!cleaned.includes("file://"), "broken file:// stylesheet link removed rather than left dangling");
 
   await fs.rm(tmp, { recursive: true, force: true });
   console.log("✓ all tests passed");
